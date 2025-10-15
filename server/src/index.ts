@@ -10,6 +10,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 import youtubeRoutes from './routes/youtube';
 import analyticsRoutes from './routes/analytics';
+import advancedAnalyticsRoutes from './routes/advancedAnalytics';
 import healthRoutes from './routes/health';
 
 // Load environment variables
@@ -47,6 +48,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/api/health', healthRoutes);
 app.use('/api/youtube', youtubeRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/advanced', advancedAnalyticsRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -57,7 +59,8 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/api/health',
       youtube: '/api/youtube',
-      analytics: '/api/analytics'
+      analytics: '/api/analytics',
+      advanced: '/api/advanced'
     }
   });
 });
