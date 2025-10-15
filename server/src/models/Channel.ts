@@ -97,6 +97,6 @@ const ChannelSchema: Schema = new Schema({
 ChannelSchema.index({ trendingVideosCount: -1 });
 ChannelSchema.index({ averageEngagementRate: -1 });
 ChannelSchema.index({ totalViews: -1 });
-ChannelSchema.index({ statistics.subscriberCount: -1 });
+ChannelSchema.index({ 'statistics.subscriberCount': -1 });
 
 export default mongoose.model<IChannel>('Channel', ChannelSchema);

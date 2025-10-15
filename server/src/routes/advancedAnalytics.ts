@@ -131,7 +131,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       };
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         overview: {
@@ -154,7 +154,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch dashboard data'
     });
@@ -178,7 +178,7 @@ router.get('/compare', async (req: Request, res: Response) => {
       });
     }
 
-    const metricsList = (metrics as string).split(',');
+    const metricsList = String(metrics).split(',');
     const now = new Date();
     let startDate = new Date();
     
@@ -287,14 +287,14 @@ router.get('/compare', async (req: Request, res: Response) => {
       };
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: comparisonData
     });
 
   } catch (error) {
     console.error('Error in comparative analysis:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to perform comparative analysis'
     });
@@ -319,7 +319,7 @@ router.get('/trends/historical', async (req: Request, res: Response) => {
     if (channelId) matchQuery.channelId = channelId;
     if (categoryId) matchQuery.categoryId = categoryId;
 
-    const pipeline = [
+    const pipeline: any[] = [
       { $match: matchQuery },
       {
         $group: {
@@ -343,16 +343,16 @@ router.get('/trends/historical', async (req: Request, res: Response) => {
     const historicalData = await Video.aggregate(pipeline);
 
     // Calculate trend analysis
-    const timeSeriesData = historicalData.map((item, index) => ({
+    const timeSeriesData = historicalData.map((item: any, index: number) => ({
       x: index,
-      y: item[`total${metric.charAt(0).toUpperCase() + metric.slice(1)}`] || item.avgEngagement
+      y: item[`total${String(metric).charAt(0).toUpperCase() + String(metric).slice(1)}`] || item.avgEngagement
     }));
 
     const trendAnalysis = timeSeriesData.length > 1 
       ? StatisticalAnalyzer.analyzeTrend(timeSeriesData)
       : null;
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         historicalData,
@@ -364,7 +364,7 @@ router.get('/trends/historical', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error fetching historical trends:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch historical trends'
     });
@@ -485,7 +485,7 @@ router.get('/insights', async (req: Request, res: Response) => {
       )
     } : null;
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         topPerformers,
@@ -503,7 +503,7 @@ router.get('/insights', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error fetching insights:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch insights'
     });

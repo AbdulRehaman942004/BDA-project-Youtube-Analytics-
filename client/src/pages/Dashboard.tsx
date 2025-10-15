@@ -15,7 +15,7 @@ import {
   Visibility,
   ThumbUp,
   Comment,
-  Channel,
+  Subscriptions,
 } from '@mui/icons-material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import api from '../services/api';
@@ -159,7 +159,7 @@ const Dashboard: React.FC = () => {
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Channel color="info" sx={{ mr: 1 }} />
+                <Subscriptions color="info" sx={{ mr: 1 }} />
                 <Typography variant="h6">Top Channels</Typography>
               </Box>
               <Typography variant="h4" sx={{ fontWeight: 'bold' }}>

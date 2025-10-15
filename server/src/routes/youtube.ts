@@ -61,7 +61,7 @@ router.get('/trending', async (req: Request, res: Response) => {
       );
     }
 
-    res.json({
+    return res.json({
       success: true,
       count: videos.length,
       data: videos
@@ -69,7 +69,7 @@ router.get('/trending', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error fetching trending videos:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch trending videos'
     });
@@ -117,7 +117,7 @@ router.get('/search', async (req: Request, res: Response) => {
       categoryId: item.snippet.categoryId
     }));
 
-    res.json({
+    return res.json({
       success: true,
       count: videos.length,
       data: videos
@@ -125,7 +125,7 @@ router.get('/search', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error searching videos:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to search videos'
     });
@@ -182,14 +182,14 @@ router.get('/video/:videoId', async (req: Request, res: Response) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: video
     });
 
   } catch (error) {
     console.error('Error fetching video:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch video'
     });

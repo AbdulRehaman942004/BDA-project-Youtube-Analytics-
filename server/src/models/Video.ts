@@ -104,7 +104,7 @@ VideoSchema.index({ categoryId: 1, trendingScore: -1 });
 VideoSchema.index({ publishedAt: -1 });
 
 // Virtual for calculating engagement rate
-VideoSchema.virtual('calculatedEngagementRate').get(function() {
+VideoSchema.virtual('calculatedEngagementRate').get(function(this: any) {
   if (this.statistics.viewCount > 0) {
     return ((this.statistics.likeCount + this.statistics.commentCount) / this.statistics.viewCount) * 100;
   }

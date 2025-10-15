@@ -5,7 +5,7 @@ import path from 'path';
 import moment from 'moment';
 
 export interface ExportOptions {
-  format: 'csv' | 'pdf' | 'json';
+  format?: 'csv' | 'pdf' | 'json';
   filename?: string;
   includeCharts?: boolean;
   timeRange?: string;
@@ -51,7 +51,7 @@ export class DataExporter {
         fs.mkdirSync(exportsDir, { recursive: true });
       }
 
-      const doc = new PDFDocument({ margin: 50 });
+      const doc = new (PDFDocument as unknown as { new(options?: any): any })({ margin: 50 });
       doc.pipe(fs.createWriteStream(filePath));
 
       // Header
@@ -231,7 +231,7 @@ export class DataExporter {
   }
 
   // Helper methods
-  private static addTableToPDF(doc: PDFDocument, data: string[][], x: number, y: number): void {
+  private static addTableToPDF(doc: any, data: string[][], x: number, y: number): void {
     const cellWidth = 100;
     const cellHeight = 20;
     

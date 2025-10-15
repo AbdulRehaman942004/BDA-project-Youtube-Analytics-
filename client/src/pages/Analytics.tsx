@@ -11,7 +11,7 @@ import {
   Tabs,
   Tab,
 } from '@mui/material';
-import { TrendingUp, Channel, VideoLibrary, Insights } from '@mui/icons-material';
+import { TrendingUp, Subscriptions, VideoLibrary, Insights } from '@mui/icons-material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import api from '../services/api';
 
@@ -103,7 +103,7 @@ const Analytics: React.FC = () => {
         <Tabs value={tabValue} onChange={handleTabChange} aria-label="analytics tabs">
           <Tab icon={<Insights />} label="Overview" />
           <Tab icon={<TrendingUp />} label="Trends" />
-          <Tab icon={<Channel />} label="Channels" />
+          <Tab icon={<Subscriptions />} label="Channels" />
           <Tab icon={<VideoLibrary />} label="Categories" />
         </Tabs>
       </Box>

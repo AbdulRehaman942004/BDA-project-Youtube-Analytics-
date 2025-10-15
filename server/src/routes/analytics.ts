@@ -77,7 +77,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
         .select('keyword category trendScore startDate')
     ]);
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         overview: {
@@ -99,7 +99,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch dashboard data'
     });
@@ -113,12 +113,12 @@ router.get('/trends', async (req: Request, res: Response) => {
     
     const query: any = {};
     if (category) {
-      query.category = category;
+      query.category = String(category);
     }
 
     const trends = await Trend.find(query)
       .sort({ trendScore: -1 })
-      .limit(parseInt(limit as string))
+      .limit(parseInt(String(limit)))
       .populate('relatedVideos', 'title channelTitle statistics')
       .populate('relatedChannels', 'title statistics');
 
@@ -189,7 +189,7 @@ router.get('/channels/:channelId', async (req: Request, res: Response) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         channel,
@@ -206,7 +206,7 @@ router.get('/channels/:channelId', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error fetching channel analytics:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch channel analytics'
     });
@@ -229,7 +229,7 @@ router.get('/performance/:videoId', async (req: Request, res: Response) => {
 
     // In a real implementation, you would track historical data
     // For now, we'll return current statistics
-    res.json({
+    return res.json({
       success: true,
       data: {
         videoId: video.videoId,
@@ -243,7 +243,7 @@ router.get('/performance/:videoId', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error fetching video performance:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch video performance'
     });
