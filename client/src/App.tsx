@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import TrendingVideos from './pages/TrendingVideos';
 import Analytics from './pages/Analytics';
 import Search from './pages/Search';
+import HDFS from './pages/HDFS';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="/trending" element={<TrendingVideos />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/search" element={<Search />} />
+          <Route path="/hdfs" element={<HDFS />} />
         </Routes>
       </Box>
     </Box>

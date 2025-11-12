@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import axios from 'axios';
 import Video from '../models/Video';
 import Channel from '../models/Channel';
+import hdfsService from '../services/hdfsService';
 
 const router = Router();
 
@@ -61,10 +62,26 @@ router.get('/trending', async (req: Request, res: Response) => {
       );
     }
 
+    // Store in HDFS if enabled
+    let hdfsPath = '';
+    try {
+      const isHDFSEnabled = await hdfsService.isEnabled();
+      if (isHDFSEnabled) {
+        const date = new Date().toISOString().split('T')[0];
+        hdfsPath = await hdfsService.storeVideoData(videos, date);
+        if (hdfsPath) {
+          console.log(`✅ Data stored in HDFS: ${hdfsPath}`);
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ HDFS storage failed, continuing without HDFS:', error);
+    }
+
     return res.json({
       success: true,
       count: videos.length,
-      data: videos
+      data: videos,
+      hdfsPath: hdfsPath || undefined
     });
 
   } catch (error) {

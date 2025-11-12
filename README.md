@@ -9,6 +9,7 @@ A comprehensive analytics platform for uncovering media popularity trends on You
 - **Trend Detection**: Identify emerging patterns and viral content
 - **Historical Analysis**: Compare trends over time
 - **MongoDB Integration**: Scalable data storage and retrieval
+- **Hadoop HDFS Integration**: Distributed file system for big data storage
 - **Docker Support**: Easy deployment and development setup
 
 ## 🏗️ Project Structure
@@ -27,6 +28,7 @@ youtube-trends-analytics/
 - **Frontend**: React, TypeScript, Chart.js, Material-UI
 - **Backend**: Node.js, Express, TypeScript
 - **Database**: MongoDB with Mongoose
+- **Big Data Storage**: Hadoop HDFS (WebHDFS REST API)
 - **Containerization**: Docker & Docker Compose
 - **API Integration**: YouTube Data API v3
 
@@ -69,7 +71,10 @@ npm run dev
 
 - MongoDB connection strings in environment variables
 - YouTube API key configuration
+- Hadoop HDFS configuration (optional)
 - Docker environment setup
+
+See `HDFS_INTEGRATION.md` for HDFS setup instructions.
 
 ## 📈 Future Enhancements
 
@@ -78,3 +83,8 @@ npm run dev
 - Advanced filtering options
 - Export functionality
 - Social media integration
+
+## 📚 Documentation
+
+- [HDFS Integration Guide](HDFS_INTEGRATION.md) - Complete guide for Hadoop HDFS integration
+- [Dataset Suggestions](DATASET_SUGGESTIONS.md) - Recommended datasets for the project
