@@ -16,6 +16,7 @@ import {
   Home,
   Menu as MenuIcon,
   Storage,
+  Dataset,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -100,6 +101,16 @@ const Navbar: React.FC = () => {
           >
             HDFS
           </Button>
+          <Button
+            color="inherit"
+            startIcon={<Dataset />}
+            onClick={() => navigate('/dataset')}
+            sx={{
+              backgroundColor: isActive('/dataset') ? 'rgba(255,255,255,0.1)' : 'transparent',
+            }}
+          >
+            Dataset
+          </Button>
         </Box>
 
         <Box sx={{ flexGrow: 1 }} />
@@ -137,6 +148,10 @@ const Navbar: React.FC = () => {
           <MenuItem onClick={() => handleNavigation('/hdfs')}>
             <Storage sx={{ mr: 1 }} />
             HDFS
+          </MenuItem>
+          <MenuItem onClick={() => handleNavigation('/dataset')}>
+            <Dataset sx={{ mr: 1 }} />
+            Dataset
           </MenuItem>
         </Menu>
       </Toolbar>

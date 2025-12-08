@@ -7,6 +7,7 @@ import TrendingVideos from './pages/TrendingVideos';
 import Analytics from './pages/Analytics';
 import Search from './pages/Search';
 import HDFS from './pages/HDFS';
+import Dataset from './pages/Dataset';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/search" element={<Search />} />
           <Route path="/hdfs" element={<HDFS />} />
+          <Route path="/dataset" element={<Dataset />} />
         </Routes>
       </Box>
     </Box>

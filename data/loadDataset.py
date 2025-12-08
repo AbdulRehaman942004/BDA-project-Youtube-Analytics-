@@ -1,47 +1,33 @@
 import kagglehub
-from kagglehub import KaggleDatasetAdapter
 import os
+import pandas as pd
 
-# Dataset handle
-dataset_handle = "datasnaek/youtube-new"
-
-print("Downloading dataset...")
-# Download the dataset first to see available files
-dataset_path = kagglehub.dataset_download(dataset_handle)
-print(f"Dataset downloaded to: {dataset_path}")
+# Download latest version
+print("Downloading YouTube Trending Video Dataset from Kaggle...")
+path = kagglehub.dataset_download("datasnaek/youtube-new")
+print("Path to dataset files:", path)
 
 # List available files
 print("\nAvailable files in dataset:")
-for root, dirs, files in os.walk(dataset_path):
+csv_files = []
+for root, dirs, files in os.walk(path):
     for file in files:
         if file.endswith('.csv'):
             file_path = os.path.join(root, file)
-            rel_path = os.path.relpath(file_path, dataset_path)
+            rel_path = os.path.relpath(file_path, path)
+            csv_files.append(file_path)
             print(f"  - {rel_path}")
 
-# Try to load a specific file (US data is usually available)
-# The dataset typically has files like: USvideos.csv, GBvideos.csv, etc.
-us_file = None
-for root, dirs, files in os.walk(dataset_path):
-    for file in files:
-        if 'US' in file.upper() and file.endswith('.csv'):
-            us_file = os.path.join(root, file)
-            break
-    if us_file:
-        break
-
-if us_file:
-    print(f"\nLoading file: {os.path.basename(us_file)}")
-    import pandas as pd
-    df = pd.read_csv(us_file)
+# Load and display info about the first CSV file found
+if csv_files:
+    first_file = csv_files[0]
+    print(f"\nLoading file: {os.path.basename(first_file)}")
+    df = pd.read_csv(first_file)
     print(f"\nDataset shape: {df.shape}")
     print("\nFirst 5 records:")
     print(df.head())
     print("\nColumn names:")
     print(df.columns.tolist())
+    print(f"\nTotal files found: {len(csv_files)}")
 else:
-    print("\nNo US file found. Available CSV files:")
-    for root, dirs, files in os.walk(dataset_path):
-        for file in files:
-            if file.endswith('.csv'):
-                print(f"  - {os.path.join(root, file)}")
+    print("\nNo CSV files found in dataset!")

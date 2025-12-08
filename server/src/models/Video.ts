@@ -22,6 +22,8 @@ export interface IVideo extends Document {
   duration: string;
   trendingScore: number;
   engagementRate: number;
+  countryCode?: string;
+  trendingDate?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -89,6 +91,14 @@ const VideoSchema: Schema = new Schema({
   engagementRate: {
     type: Number,
     default: 0,
+    index: true
+  },
+  countryCode: {
+    type: String,
+    index: true
+  },
+  trendingDate: {
+    type: Date,
     index: true
   }
 }, {
