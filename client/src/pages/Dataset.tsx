@@ -94,9 +94,16 @@ const Dataset: React.FC = () => {
   const fetchStats = async () => {
     try {
       const response = await api.get('/dataset/stats');
-      setStats(response.data.stats);
+      if (response.data && response.data.stats) {
+        setStats(response.data.stats);
+        setError(null);
+      } else {
+        setError('Backend is not running. Please start the backend server.');
+      }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to fetch dataset stats');
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to fetch dataset stats. Make sure backend is running on http://localhost:5000';
+      setError(errorMsg);
+      console.error('Error fetching stats:', err);
     }
   };
 
@@ -114,11 +121,17 @@ const Dataset: React.FC = () => {
       if (searchQuery) params.search = searchQuery;
 
       const response = await api.get('/dataset/videos', { params });
-      setVideos(response.data.data);
-      setTotalPages(response.data.pagination.pages);
-      setError(null);
+      if (response.data && response.data.data) {
+        setVideos(response.data.data);
+        setTotalPages(response.data.pagination?.pages || 1);
+        setError(null);
+      } else {
+        setError('No data received from backend');
+      }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to fetch videos');
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to fetch videos. Make sure backend is running.';
+      setError(errorMsg);
+      console.error('Error fetching videos:', err);
     } finally {
       setLoading(false);
     }
@@ -127,18 +140,20 @@ const Dataset: React.FC = () => {
   const fetchCountries = async () => {
     try {
       const response = await api.get('/dataset/countries');
-      setCountries(response.data.countries);
+      setCountries(response.data?.countries || []);
     } catch (err) {
       console.error('Failed to fetch countries:', err);
+      setCountries([]);
     }
   };
 
   const fetchCategories = async () => {
     try {
       const response = await api.get('/dataset/categories');
-      setCategories(response.data.categories);
+      setCategories(response.data?.categories || []);
     } catch (err) {
       console.error('Failed to fetch categories:', err);
+      setCategories([]);
     }
   };
 
@@ -147,9 +162,10 @@ const Dataset: React.FC = () => {
       const params: any = { groupBy: 'month' };
       if (selectedCountry) params.countryCode = selectedCountry;
       const response = await api.get('/dataset/timeline', { params });
-      setTimeline(response.data.timeline);
+      setTimeline(response.data?.timeline || []);
     } catch (err) {
       console.error('Failed to fetch timeline:', err);
+      setTimeline([]);
     }
   };
 
@@ -271,7 +287,7 @@ const Dataset: React.FC = () => {
                   label="Country"
                 >
                   <MenuItem value="">All Countries</MenuItem>
-                  {countries.map((country) => (
+                  {(countries || []).map((country) => (
                     <MenuItem key={country.code} value={country.code}>
                       {country.code} ({country.count.toLocaleString()})
                     </MenuItem>
@@ -291,7 +307,7 @@ const Dataset: React.FC = () => {
                   label="Category"
                 >
                   <MenuItem value="">All Categories</MenuItem>
-                  {categories.map((cat) => (
+                  {(categories || []).map((cat) => (
                     <MenuItem key={cat._id} value={cat._id}>
                       Category {cat._id} ({cat.count.toLocaleString()})
                     </MenuItem>
@@ -329,7 +345,7 @@ const Dataset: React.FC = () => {
                 Videos Over Time
               </Typography>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={timeline}>
+                <LineChart data={timeline || []}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="date" 
@@ -353,7 +369,7 @@ const Dataset: React.FC = () => {
                 Top Categories
               </Typography>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={categories.slice(0, 10)}>
+                <BarChart data={(categories || []).slice(0, 10)}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="_id" />
                   <YAxis />
@@ -390,14 +406,14 @@ const Dataset: React.FC = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {videos.length === 0 ? (
+                    {(!videos || videos.length === 0) ? (
                       <TableRow>
                         <TableCell colSpan={7} align="center">
-                          No videos found
+                          {loading ? 'Loading...' : 'No videos found'}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      videos.map((video) => (
+                      (videos || []).map((video) => (
                         <TableRow key={video.videoId}>
                           <TableCell>
                             <Typography variant="body2" noWrap sx={{ maxWidth: 300 }}>

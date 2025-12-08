@@ -133,11 +133,37 @@ const mockApi = {
       const data = generateMockSearch(Math.min(Math.max(maxResults, 1), 50));
       return delay({ data: { data } });
     }
+    // Try to use real API for dataset endpoints (always use real API for these)
+    if (path.startsWith('/dataset/') || path.startsWith('/hdfs/')) {
+      // Use axios directly for dataset endpoints - these should always use real API
+      return axios.get(`${API_BASE_URL}${url}`, { 
+        params: options?.params,
+        timeout: 10000
+      })
+        .then(response => ({ data: response.data }))
+        .catch((error) => {
+          console.error('API Error for', url, error);
+          // Fallback to empty if backend not available
+          return delay({ data: { data: null, success: false, error: error.message } });
+        });
+    }
     // Default unknown route: empty payload
     return delay({ data: { data: null } });
   },
 };
 
-const api = IS_DEMO_MODE ? (mockApi as unknown as typeof realApi) : realApi;
+// Always use real API for dataset and HDFS endpoints, even in demo mode
+const api = IS_DEMO_MODE ? {
+  ...realApi,
+  get: (url: string, options?: any) => {
+    const path = url.split('?')[0];
+    // Always use real API for dataset and HDFS
+    if (path.startsWith('/dataset/') || path.startsWith('/hdfs/')) {
+      return realApi.get(url, options);
+    }
+    // Use mock for other endpoints in demo mode
+    return mockApi.get(url, options);
+  }
+} as typeof realApi : realApi;
 
 export default api;

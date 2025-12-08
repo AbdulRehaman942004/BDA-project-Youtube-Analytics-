@@ -1,15 +1,23 @@
-const mongoose = require('mongoose');
-const csv = require('csv-parser');
-const fs = require('fs');
 const path = require('path');
+const fs = require('fs');
+
+// Add server node_modules to path
+const serverPath = path.join(__dirname, '..', 'server');
+process.env.NODE_PATH = path.join(serverPath, 'node_modules');
+require('module')._initPaths();
+
+// Load environment variables
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
+// Require modules from server
+const mongoose = require('mongoose');
+const csv = require('csv-parser');
+
 // Import models - need to use compiled JS files
-const path = require('path');
-const Video = require(path.join(__dirname, '..', 'server', 'dist', 'models', 'Video')).default;
+const Video = require(path.join(serverPath, 'dist', 'models', 'Video')).default;
 let hdfsService;
 try {
-  hdfsService = require(path.join(__dirname, '..', 'server', 'dist', 'services', 'hdfsService')).default;
+  hdfsService = require(path.join(serverPath, 'dist', 'services', 'hdfsService')).default;
 } catch (e) {
   console.warn('HDFS service not available');
   hdfsService = { isEnabled: () => Promise.resolve(false) };
