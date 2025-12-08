@@ -50,6 +50,10 @@ npm install
 npm run dev
 ```
 
+### Quick local startup (separate shells)
+- Backend: `cd server && npm install && npm run dev`
+- Frontend: `cd client && npm install && npm start`
+
 ## 📊 Analytics Features
 
 1. **Video Performance Metrics**

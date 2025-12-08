@@ -52,7 +52,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/advanced', advancedAnalyticsRoutes);
 app.use('/api/hdfs', hdfsRoutes);
 
-// Root endpoint
+// Root endpoint with a minimal, self-describing payload for quick smoke tests
 app.get('/', (req, res) => {
   res.json({
     message: 'YouTube Trends Analytics API',
