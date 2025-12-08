@@ -99,7 +99,7 @@ const Dashboard: React.FC = () => {
   return (
     <Container maxWidth="xl">
       <Typography variant="h4" gutterBottom sx={{ mb: 4, fontWeight: 'bold' }}>
-        Dashboard Overview
+        YouTube Trends Overview
       </Typography>
 
       {/* Overview Cards */}
