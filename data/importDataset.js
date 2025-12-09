@@ -57,6 +57,28 @@ function parseDuration(duration) {
   return hours * 3600 + minutes * 60 + seconds;
 }
 
+// Parse trending date (handles Kaggle format: YY.MM.DD)
+function parseTrendingDate(dateStr) {
+  if (!dateStr) return new Date();
+  
+  // Handle Kaggle format: YY.MM.DD (e.g., "17.14.11" = 2017-11-14)
+  const kaggleMatch = dateStr.match(/^(\d{2})\.(\d{2})\.(\d{2})$/);
+  if (kaggleMatch) {
+    const year = 2000 + parseInt(kaggleMatch[1]);
+    const month = parseInt(kaggleMatch[2]) - 1; // JS months are 0-indexed
+    const day = parseInt(kaggleMatch[3]);
+    return new Date(year, month, day);
+  }
+  
+  // Try standard Date parsing
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed.getTime())) {
+    return parsed;
+  }
+  
+  return new Date();
+}
+
 // Import CSV file
 async function importCSVFile(filePath, countryCode = 'US') {
   return new Promise((resolve, reject) => {
@@ -102,7 +124,7 @@ async function importCSVFile(filePath, countryCode = 'US') {
               parseInt(row.comment_count || row.comments || '0')
             ),
             countryCode: countryCode,
-            trendingDate: row.trending_date ? new Date(row.trending_date) : new Date()
+            trendingDate: parseTrendingDate(row.trending_date)
           };
 
           videos.push(video);

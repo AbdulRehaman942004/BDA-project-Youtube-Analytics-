@@ -49,11 +49,16 @@ const Dashboard: React.FC = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/analytics/dashboard?timeRange=7d');
-      setData(response.data.data);
       setError(null);
-    } catch (err) {
-      setError('Failed to fetch dashboard data');
+      const response = await api.get('/analytics/dashboard?timeRange=7d');
+      if (response.data && response.data.data) {
+        setData(response.data.data);
+      } else {
+        setError('No data received from backend. Make sure backend is running and dataset is imported.');
+      }
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to fetch dashboard data';
+      setError(`Failed to fetch dashboard data: ${errorMsg}. Make sure backend is running on http://localhost:5000`);
       console.error('Dashboard error:', err);
     } finally {
       setLoading(false);

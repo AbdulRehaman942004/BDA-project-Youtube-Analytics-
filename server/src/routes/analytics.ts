@@ -31,6 +31,12 @@ router.get('/dashboard', async (req: Request, res: Response) => {
         startDate.setDate(now.getDate() - 7);
     }
 
+    // Check if we have any videos in the date range, if not, use all data
+    const videosInRange = await Video.countDocuments({ publishedAt: { $gte: startDate } });
+    const useAllData = videosInRange === 0;
+    
+    const dateFilter = useAllData ? {} : { publishedAt: { $gte: startDate } };
+
     // Get aggregated data
     const [
       totalVideos,
@@ -41,27 +47,29 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       engagementStats,
       trendingKeywords
     ] = await Promise.all([
-      Video.countDocuments({ publishedAt: { $gte: startDate } }),
+      Video.countDocuments(dateFilter),
       Video.aggregate([
-        { $match: { publishedAt: { $gte: startDate } } },
+        { $match: dateFilter },
         { $group: { _id: null, totalViews: { $sum: '$statistics.viewCount' } } }
       ]),
-      Video.find({ publishedAt: { $gte: startDate } })
+      Video.find(dateFilter)
         .sort({ trendingScore: -1 })
         .limit(10)
-        .select('videoId title channelTitle statistics trendingScore publishedAt'),
+        .select('videoId title channelTitle statistics trendingScore publishedAt')
+        .lean(),
       Channel.find()
         .sort({ trendingVideosCount: -1 })
         .limit(10)
-        .select('channelId title statistics trendingVideosCount'),
+        .select('channelId title statistics trendingVideosCount')
+        .lean(),
       Video.aggregate([
-        { $match: { publishedAt: { $gte: startDate } } },
+        { $match: dateFilter },
         { $group: { _id: '$categoryId', count: { $sum: 1 } } },
         { $sort: { count: -1 } },
         { $limit: 10 }
       ]),
       Video.aggregate([
-        { $match: { publishedAt: { $gte: startDate } } },
+        { $match: dateFilter },
         {
           $group: {
             _id: null,
@@ -75,6 +83,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
         .sort({ trendScore: -1 })
         .limit(10)
         .select('keyword category trendScore startDate')
+        .lean()
     ]);
 
     return res.json({
