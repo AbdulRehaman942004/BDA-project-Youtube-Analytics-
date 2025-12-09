@@ -6,7 +6,7 @@ const IS_DEMO_MODE = String(process.env.REACT_APP_DEMO).toLowerCase() === 'true'
 // Create a real Axios instance (used when not in demo)
 const realApi = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 60000, // Increased to 60 seconds for large dataset queries
   headers: {
     'Content-Type': 'application/json',
   },
