@@ -1,16 +1,14 @@
 # YouTube Trends Analytics
 
-A comprehensive analytics platform for uncovering media popularity trends on YouTube.
+A comprehensive analytics platform for analyzing YouTube trending video data from Kaggle dataset.
 
 ## 🚀 Features
 
-- **Real-time YouTube Data Analysis**: Track trending videos, channels, and topics
+- **Real-time Data Analysis**: Track trending videos, channels, and topics
 - **Interactive Dashboard**: Beautiful, responsive UI for data visualization
 - **Trend Detection**: Identify emerging patterns and viral content
 - **Historical Analysis**: Compare trends over time
 - **MongoDB Integration**: Scalable data storage and retrieval
-- **Hadoop HDFS Integration**: Distributed file system for big data storage
-- **Docker Support**: Easy deployment and development setup
 
 ## 🏗️ Project Structure
 
@@ -18,77 +16,130 @@ A comprehensive analytics platform for uncovering media popularity trends on You
 youtube-trends-analytics/
 ├── client/                 # React frontend
 ├── server/                 # Node.js/Express backend
-├── docker/                 # Docker configuration files
-├── docs/                   # Project documentation
-└── scripts/                # Utility scripts
+├── data/                   # Dataset files and import scripts
+├── scripts/                # Utility scripts
+└── docs/                   # Project documentation
 ```
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React, TypeScript, Chart.js, Material-UI
+- **Frontend**: React, TypeScript, Material-UI, Recharts
 - **Backend**: Node.js, Express, TypeScript
 - **Database**: MongoDB with Mongoose
-- **Big Data Storage**: Hadoop HDFS (WebHDFS REST API)
-- **Containerization**: Docker & Docker Compose
-- **API Integration**: YouTube Data API v3
+- **Dataset**: Kaggle YouTube Trending Video Dataset
+
+## 📋 Prerequisites
+
+- Node.js 18+ and npm
+- MongoDB (via Docker or local installation)
+- Python 3 (for dataset download script)
 
 ## 🚀 Quick Start
 
-### Development Mode
-```bash
-npm run docker:dev
-```
+### 1. Install Dependencies
 
-### Production Mode
-```bash
-npm run docker:prod
-```
-
-### Local Development (without Docker)
-```bash
+```powershell
+# Install root dependencies
 npm install
+
+# Install server dependencies
+cd server
+npm install
+cd ..
+
+# Install client dependencies
+cd client
+npm install
+cd ..
+```
+
+### 2. Start MongoDB (Docker)
+
+```powershell
+docker-compose up -d mongodb
+```
+
+This will start MongoDB on `localhost:27017` with:
+- Username: `admin`
+- Password: `password123`
+- Database: `youtube_trends`
+
+### 3. Download and Import Dataset
+
+```powershell
+# Download dataset from Kaggle (requires Kaggle API setup)
+python data\loadDataset.py
+
+# Import dataset to MongoDB
+node data\importDataset.js
+```
+
+### 4. Start Backend
+
+```powershell
+cd server
+$env:MONGODB_URI="mongodb://admin:password123@localhost:27017/youtube_trends?authSource=admin"
+$env:PORT="5000"
 npm run dev
 ```
 
-### Quick local startup (separate shells)
-- Backend: `cd server && npm install && npm run dev`
-- Frontend: `cd client && npm install && npm start`
+Backend will run on `http://localhost:5000`
 
-## 📊 Analytics Features
+### 5. Start Frontend
 
-1. **Video Performance Metrics**
-   - View counts, likes, comments analysis
-   - Engagement rate calculations
-   - Trending duration tracking
+```powershell
+cd client
+$env:REACT_APP_API_URL="http://localhost:5000/api"
+$env:REACT_APP_DEMO="false"
+npm start
+```
 
-2. **Channel Analytics**
-   - Subscriber growth patterns
-   - Content performance comparison
-   - Channel ranking algorithms
-
-3. **Trend Analysis**
-   - Keyword trend detection
-   - Category popularity shifts
-   - Geographic trend variations
-
-## 🔧 Configuration
-
-- MongoDB connection strings in environment variables
-- YouTube API key configuration
-- Hadoop HDFS configuration (optional)
-- Docker environment setup
-
-See `HDFS_INTEGRATION.md` for HDFS setup instructions.
-
-## 📈 Future Enhancements
-
-- Machine learning trend prediction
-- Real-time notifications
-- Advanced filtering options
-- Export functionality
-- Social media integration
+Frontend will run on `http://localhost:3000`
 
 ## 📚 Documentation
 
-- [HDFS Integration Guide](HDFS_INTEGRATION.md) - Complete guide for Hadoop HDFS integration
-- [Dataset Suggestions](DATASET_SUGGESTIONS.md) - Recommended datasets for the project
+- [Dataset Import Guide](DATASET_IMPORT_GUIDE.md) - Detailed instructions for importing the Kaggle dataset
+- [API Documentation](docs/API.md) - Backend API endpoints
+- [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment instructions
+
+## 🔧 Configuration
+
+### Environment Variables
+
+**Backend** (`.env` in `server/` directory):
+```
+MONGODB_URI=mongodb://admin:password123@localhost:27017/youtube_trends?authSource=admin
+PORT=5000
+NODE_ENV=development
+```
+
+**Frontend** (set as environment variables):
+```
+REACT_APP_API_URL=http://localhost:5000/api
+REACT_APP_DEMO=false
+```
+
+## 📊 Dataset
+
+This project uses the [Kaggle YouTube Trending Video Dataset](https://www.kaggle.com/datasets/datasnaek/youtube-new). The dataset includes:
+- 184,287+ trending videos
+- Multiple countries (US, GB, CA, DE, FR, IN, JP, KR, MX, RU)
+- Video metadata, statistics, and trending information
+
+## 🐳 Docker
+
+Only MongoDB runs in Docker. All other services (backend, frontend) run locally for development.
+
+To start MongoDB:
+```powershell
+docker-compose up -d mongodb
+```
+
+To stop MongoDB:
+```powershell
+docker-compose down
+```
+
+## 📝 License
+
+MIT
