@@ -1,0 +1,21 @@
+-> Import dataset into MongoDB
+Make sure MongoDB is running, then:
+# from project root
+node data\importDataset.js --uri "mongodb://admin:password123@localhost:27017/youtube_trends?authSource=admin"
+
+Steps:
+# 1. Stop everything
+docker-compose down
+
+# 2. Rebuild everything (no cache to ensure fresh build)
+docker-compose build --no-cache
+
+# 3. Start all services
+docker-compose up -d
+
+# 4. Check status
+docker-compose ps
+
+# 5. Check logs
+docker-compose logs backend
+docker-compose logs frontend
