@@ -1,7 +1,15 @@
 import axios from 'axios';
 import frontendCache from '../utils/cache';
 
+// API Base URL Configuration
+// In Docker: REACT_APP_API_URL is set to '/api' during build
+// In local dev: Use full URL to backend
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+// Log for debugging
+if (process.env.NODE_ENV === 'development' || !process.env.REACT_APP_API_URL) {
+  console.log('🌐 API Base URL:', API_BASE_URL);
+}
 
 // Create Axios instance for API calls
 const api = axios.create({

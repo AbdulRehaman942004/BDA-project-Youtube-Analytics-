@@ -2,8 +2,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Load categories data
-// When compiled, __dirname will be dist/utils, so we need to go up 3 levels to reach project root
-const categoriesPath = path.join(__dirname, '../../../data/categories.json');
+// When compiled, __dirname will be dist/utils
+// In Docker: data is mounted at /app/data
+// Locally: data is at ../../../data from dist/utils
+const categoriesPath = process.env.NODE_ENV === 'production' && fs.existsSync('/app/data/categories.json')
+  ? '/app/data/categories.json'
+  : path.join(__dirname, '../../../data/categories.json');
 let categoriesData: any;
 try {
   categoriesData = JSON.parse(fs.readFileSync(categoriesPath, 'utf-8'));
