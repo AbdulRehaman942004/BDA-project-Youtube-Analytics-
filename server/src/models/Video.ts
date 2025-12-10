@@ -113,6 +113,13 @@ VideoSchema.index({ channelId: 1, publishedAt: -1 });
 VideoSchema.index({ categoryId: 1, trendingScore: -1 });
 VideoSchema.index({ publishedAt: -1 });
 
+// Performance optimization indexes for date range queries and aggregations
+VideoSchema.index({ publishedAt: 1, trendingScore: -1 }); // For date range + sort queries
+VideoSchema.index({ channelId: 1, publishedAt: -1, trendingScore: -1 }); // For channel aggregations
+VideoSchema.index({ categoryId: 1, publishedAt: -1 }); // For category aggregations with date filter
+VideoSchema.index({ engagementRate: -1 }); // For engagement stats aggregations
+VideoSchema.index({ countryCode: 1, publishedAt: -1 }); // For country-based queries
+
 // Virtual for calculating engagement rate
 VideoSchema.virtual('calculatedEngagementRate').get(function(this: any) {
   if (this.statistics.viewCount > 0) {

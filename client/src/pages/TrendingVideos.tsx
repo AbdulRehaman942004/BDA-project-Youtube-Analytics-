@@ -58,10 +58,45 @@ const TrendingVideos: React.FC = () => {
         params: { regionCode: region, maxResults }
       });
       
-      setVideos(response.data.data);
+      // Handle both cached and non-cached responses
+      if (response.data) {
+        if (response.data.data && Array.isArray(response.data.data)) {
+          setVideos(response.data.data);
+        } else if (Array.isArray(response.data)) {
+          // Handle case where data is directly in response.data
+          setVideos(response.data);
+        } else {
+          console.error('Invalid response format:', response.data);
+          setError('Invalid response format from server');
+        }
+      } else {
+        setError('No data received from server');
+      }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to fetch trending videos');
-      console.error('Error fetching trending videos:', err);
+      // Handle cached responses
+      if (err && err.__cached) {
+        if (err.data) {
+          if (err.data.data && Array.isArray(err.data.data)) {
+            setVideos(err.data.data);
+            return;
+          } else if (Array.isArray(err.data)) {
+            setVideos(err.data);
+            return;
+          }
+        }
+      }
+      
+      // Extract error message
+      const errorMsg = err.response?.data?.error || 
+                       err.response?.data?.message || 
+                       err.message || 
+                       'Failed to fetch trending videos';
+      setError(errorMsg);
+      console.error('Error fetching trending videos:', {
+        error: err,
+        response: err.response?.data,
+        message: errorMsg
+      });
     } finally {
       setLoading(false);
     }

@@ -11,9 +11,11 @@ import {
   Tabs,
   Tab,
 } from '@mui/material';
-import { TrendingUp, Subscriptions, VideoLibrary, Insights } from '@mui/icons-material';
+import { TrendingUp, VideoLibrary, Insights } from '@mui/icons-material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import api from '../services/api';
+import { getCategoryName } from '../utils/categoryMapper';
+import frontendCache from '../utils/cache';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -57,8 +59,21 @@ const Analytics: React.FC = () => {
       setError(null);
       
       const response = await api.get('/analytics/dashboard?timeRange=30d');
-      setAnalyticsData(response.data.data);
+      if (response.data && response.data.data) {
+        setAnalyticsData(response.data.data);
+        if (response.data.cached || (response as any).fromCache) {
+          console.log('✅ Using cached response');
+        }
+      }
     } catch (err: any) {
+      // Handle cached responses
+      if (err && err.__cached) {
+        if (err.data && err.data.data) {
+          setAnalyticsData(err.data.data);
+          console.log('✅ Using cached data');
+          return;
+        }
+      }
       setError(err.response?.data?.error || 'Failed to fetch analytics data');
       console.error('Error fetching analytics:', err);
     } finally {
@@ -103,7 +118,6 @@ const Analytics: React.FC = () => {
         <Tabs value={tabValue} onChange={handleTabChange} aria-label="analytics tabs">
           <Tab icon={<Insights />} label="Overview" />
           <Tab icon={<TrendingUp />} label="Trends" />
-          <Tab icon={<Subscriptions />} label="Channels" />
           <Tab icon={<VideoLibrary />} label="Categories" />
         </Tabs>
       </Box>
@@ -115,15 +129,36 @@ const Analytics: React.FC = () => {
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
-                    Engagement Statistics
+                    Engagement Rate Statistics
+                  </Typography>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Average Engagement: {analyticsData.engagementStats.avgEngagement.toFixed(2)}%
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Max Engagement: {analyticsData.engagementStats.maxEngagement.toFixed(2)}%
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Min Engagement: {analyticsData.engagementStats.minEngagement.toFixed(2)}%
+                    </Typography>
+                  </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                    Engagement Rate = (Likes + Comments) / Views × 100
                   </Typography>
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
                         data={[
-                          { name: 'Likes', value: analyticsData.engagementStats.maxEngagement },
-                          { name: 'Comments', value: analyticsData.engagementStats.avgEngagement },
-                          { name: 'Views', value: 100 - analyticsData.engagementStats.avgEngagement },
+                          { 
+                            name: 'Engaged', 
+                            value: analyticsData.engagementStats.avgEngagement,
+                            label: `${analyticsData.engagementStats.avgEngagement.toFixed(1)}% Engaged`
+                          },
+                          { 
+                            name: 'Not Engaged', 
+                            value: 100 - analyticsData.engagementStats.avgEngagement,
+                            label: `${(100 - analyticsData.engagementStats.avgEngagement).toFixed(1)}% Not Engaged`
+                          },
                         ]}
                         cx="50%"
                         cy="50%"
@@ -133,11 +168,13 @@ const Analytics: React.FC = () => {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {[0, 1, 2].map((entry, index) => (
+                        {[0, 1].map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip 
+                        formatter={(value: any) => [`${value.toFixed(2)}%`, 'Engagement Rate']}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -154,7 +191,7 @@ const Analytics: React.FC = () => {
                     {analyticsData.categoryStats.map((category: any, index: number) => (
                       <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #eee', borderRadius: 1 }}>
                         <Typography variant="subtitle2">
-                          Category {category._id}
+                          {category.name || getCategoryName(category.id || category._id)}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
                           {category.count} videos
@@ -178,25 +215,35 @@ const Analytics: React.FC = () => {
                   Trending Keywords
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {analyticsData?.trendingKeywords.map((keyword: any, index: number) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        p: 2,
-                        border: '1px solid #eee',
-                        borderRadius: 1,
-                        minWidth: 200,
-                      }}
-                    >
-                      <Typography variant="subtitle2">{keyword.keyword}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Category: {keyword.category}
-                      </Typography>
-                      <Typography variant="caption" display="block">
-                        Score: {keyword.trendScore}
-                      </Typography>
-                    </Box>
-                  ))}
+                  {analyticsData?.trendingKeywords
+                    .filter((keyword: any) => {
+                      const kw = keyword.keyword || '';
+                      return kw && 
+                             kw.trim() !== '' && 
+                             !kw.match(/^\[none\]$/i) && 
+                             kw.toLowerCase() !== 'none' &&
+                             kw.toLowerCase() !== 'null' &&
+                             kw.toLowerCase() !== 'undefined';
+                    })
+                    .map((keyword: any, index: number) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          p: 2,
+                          border: '1px solid #eee',
+                          borderRadius: 1,
+                          minWidth: 200,
+                        }}
+                      >
+                        <Typography variant="subtitle2">{keyword.keyword}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Category: {keyword.category}
+                        </Typography>
+                        <Typography variant="caption" display="block">
+                          Score: {keyword.trendScore}
+                        </Typography>
+                      </Box>
+                    ))}
                 </Box>
               </CardContent>
             </Card>
@@ -204,36 +251,8 @@ const Analytics: React.FC = () => {
         </Grid>
       </TabPanel>
 
-      <TabPanel value={tabValue} index={2}>
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Top Performing Channels
-                </Typography>
-                <Grid container spacing={2}>
-                  {analyticsData?.topChannels.map((channel: any, index: number) => (
-                    <Grid item xs={12} sm={6} md={4} key={index}>
-                      <Box sx={{ p: 2, border: '1px solid #eee', borderRadius: 1, height: '100%' }}>
-                        <Typography variant="subtitle2">{channel.title}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Trending Videos: {channel.trendingVideosCount}
-                        </Typography>
-                        <Typography variant="caption" display="block">
-                          Subscribers: {channel.statistics.subscriberCount?.toLocaleString() || 'N/A'}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      </TabPanel>
 
-      <TabPanel value={tabValue} index={3}>
+      <TabPanel value={tabValue} index={2}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <Card>
@@ -242,11 +261,24 @@ const Analytics: React.FC = () => {
                   Category Performance
                 </Typography>
                 <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={analyticsData?.categoryStats || []}>
+                  <LineChart 
+                    data={(analyticsData?.categoryStats || []).map((cat: any) => ({
+                      ...cat,
+                      categoryName: cat.name || getCategoryName(cat.id || cat._id)
+                    }))}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="_id" />
+                    <XAxis 
+                      dataKey="categoryName" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                    />
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip 
+                      formatter={(value: any) => [value, 'Videos']}
+                      labelFormatter={(label: any) => `Category: ${label}`}
+                    />
                     <Line type="monotone" dataKey="count" stroke="#ff0000" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>

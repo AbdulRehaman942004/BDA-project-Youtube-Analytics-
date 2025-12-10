@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import Video from '../models/Video';
 import Channel from '../models/Channel';
-import hdfsService from '../services/hdfsService';
+import { enrichCategoryStats } from '../utils/categoryMapper';
 
 const router = Router();
 
@@ -176,7 +176,7 @@ router.get('/countries', async (req: Request, res: Response) => {
  */
 router.get('/categories', async (req: Request, res: Response) => {
   try {
-    const categories = await Video.aggregate([
+    const rawCategories = await Video.aggregate([
       {
         $group: {
           _id: '$categoryId',
@@ -188,6 +188,17 @@ router.get('/categories', async (req: Request, res: Response) => {
       { $sort: { count: -1 } },
       { $limit: 20 }
     ]);
+    
+    // Enrich with category names
+    const enrichedCategories = enrichCategoryStats(rawCategories);
+    const categories = enrichedCategories.map((cat: any) => {
+      const rawCat = rawCategories.find((r: any) => r._id === cat.id);
+      return {
+        ...cat,
+        avgViews: rawCat?.avgViews || 0,
+        avgLikes: rawCat?.avgLikes || 0
+      };
+    });
 
     return res.json({
       success: true,

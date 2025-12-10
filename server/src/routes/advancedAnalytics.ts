@@ -3,6 +3,7 @@ import Video from '../models/Video';
 import Channel from '../models/Channel';
 import Trend from '../models/Trend';
 import { StatisticalAnalyzer } from '../services/statisticalAnalysis';
+import { enrichCategoryStats } from '../utils/categoryMapper';
 import moment from 'moment';
 import _ from 'lodash';
 
@@ -40,7 +41,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       totalViews,
       topVideos,
       topChannels,
-      categoryStats,
+      rawCategoryStats,
       engagementStats,
       trendingKeywords,
       videosForAnalysis
@@ -130,6 +131,9 @@ router.get('/dashboard', async (req: Request, res: Response) => {
         }
       };
     }
+
+    // Enrich category stats with names
+    const categoryStats = enrichCategoryStats(rawCategoryStats);
 
     return res.json({
       success: true,

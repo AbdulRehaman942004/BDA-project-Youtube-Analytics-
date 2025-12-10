@@ -12,7 +12,6 @@ import youtubeRoutes from './routes/youtube';
 import analyticsRoutes from './routes/analytics';
 import advancedAnalyticsRoutes from './routes/advancedAnalytics';
 import healthRoutes from './routes/health';
-import hdfsRoutes from './routes/hdfs';
 import datasetRoutes from './routes/dataset';
 
 // Load environment variables
@@ -51,7 +50,6 @@ app.use('/api/health', healthRoutes);
 app.use('/api/youtube', youtubeRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/advanced', advancedAnalyticsRoutes);
-app.use('/api/hdfs', hdfsRoutes);
 app.use('/api/dataset', datasetRoutes);
 
 // Root endpoint with a minimal, self-describing payload for quick smoke tests
@@ -65,7 +63,6 @@ app.get('/', (req, res) => {
       youtube: '/api/youtube',
       analytics: '/api/analytics',
       advanced: '/api/advanced',
-      hdfs: '/api/hdfs',
       dataset: '/api/dataset'
     }
   });

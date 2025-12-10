@@ -18,6 +18,7 @@ import {
 } from '@mui/material';
 import { Search as SearchIcon, Visibility, ThumbUp, Comment } from '@mui/icons-material';
 import api from '../services/api';
+import { getCategoryName } from '../utils/categoryMapper';
 
 interface SearchResult {
   videoId: string;
@@ -39,18 +40,21 @@ const Search: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [maxResults, setMaxResults] = useState(25);
   const [order, setOrder] = useState('relevance');
+  const [hasSearched, setHasSearched] = useState(false); // Track if user has performed a search
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!query.trim()) {
       setError('Please enter a search query');
+      setHasSearched(false);
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
+      setHasSearched(true); // Mark that a search has been performed
       
       const response = await api.get('/youtube/search', {
         params: {
@@ -60,9 +64,30 @@ const Search: React.FC = () => {
         }
       });
       
-      setResults(response.data.data);
+      // Handle both cached and non-cached responses
+      if (response.data && response.data.data) {
+        setResults(Array.isArray(response.data.data) ? response.data.data : []);
+      } else if (Array.isArray(response.data)) {
+        setResults(response.data);
+      } else {
+        setResults([]);
+      }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to search videos');
+      // Handle cached responses
+      if (err && err.__cached) {
+        if (err.data) {
+          if (err.data.data && Array.isArray(err.data.data)) {
+            setResults(err.data.data);
+            return;
+          } else if (Array.isArray(err.data)) {
+            setResults(err.data);
+            return;
+          }
+        }
+      }
+      
+      setError(err.response?.data?.error || err.message || 'Failed to search videos');
+      setResults([]);
       console.error('Search error:', err);
     } finally {
       setLoading(false);
@@ -206,7 +231,7 @@ const Search: React.FC = () => {
                   </Typography>
                   
                   <Typography variant="caption" color="text.secondary">
-                    Category: {video.categoryId}
+                    Category: {getCategoryName(video.categoryId)}
                   </Typography>
                 </Box>
               </CardContent>
@@ -215,7 +240,8 @@ const Search: React.FC = () => {
         ))}
       </Grid>
 
-      {results.length === 0 && !loading && !error && query && (
+      {/* Show "No results" only if user has actually performed a search */}
+      {hasSearched && results.length === 0 && !loading && !error && (
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="h6" color="text.secondary">
             No videos found for "{query}"
@@ -226,7 +252,8 @@ const Search: React.FC = () => {
         </Box>
       )}
 
-      {!query && !loading && (
+      {/* Show initial search prompt only if no search has been performed */}
+      {!hasSearched && !loading && (
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <SearchIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
           <Typography variant="h6" color="text.secondary">

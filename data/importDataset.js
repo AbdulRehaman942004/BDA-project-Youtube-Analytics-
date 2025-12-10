@@ -15,13 +15,6 @@ const csv = require('csv-parser');
 
 // Import models - need to use compiled JS files
 const Video = require(path.join(serverPath, 'dist', 'models', 'Video')).default;
-let hdfsService;
-try {
-  hdfsService = require(path.join(serverPath, 'dist', 'services', 'hdfsService')).default;
-} catch (e) {
-  console.warn('HDFS service not available');
-  hdfsService = { isEnabled: () => Promise.resolve(false) };
-}
 
 // MongoDB connection
 const connectDB = async () => {
@@ -175,29 +168,6 @@ async function insertBatch(videos) {
   }
 }
 
-// Store in HDFS
-async function storeInHDFS(filePath, countryCode) {
-  try {
-    const isEnabled = await hdfsService.isEnabled();
-    if (!isEnabled) {
-      console.log('⚠️  HDFS is not enabled, skipping HDFS storage');
-      return;
-    }
-
-    console.log(`\n📦 Storing data in HDFS...`);
-    const videos = await Video.find({ countryCode }).limit(10000).lean();
-    
-    if (videos.length > 0) {
-      const date = new Date().toISOString().split('T')[0];
-      const hdfsPath = await hdfsService.storeVideoData(videos, date);
-      if (hdfsPath) {
-        console.log(`✅ Data stored in HDFS: ${hdfsPath}`);
-      }
-    }
-  } catch (error) {
-    console.warn('⚠️  HDFS storage failed:', error.message);
-  }
-}
 
 // Main import function
 async function main() {
@@ -246,9 +216,6 @@ async function main() {
 
       const count = await importCSVFile(csvFile, countryCode);
       totalImported += count;
-
-      // Store in HDFS
-      await storeInHDFS(csvFile, countryCode);
     }
 
     console.log(`\n✅ Total videos imported: ${totalImported}`);

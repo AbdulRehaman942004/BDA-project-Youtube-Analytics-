@@ -1,99 +1,86 @@
 import { Router, Request, Response } from 'express';
-import axios from 'axios';
 import Video from '../models/Video';
 import Channel from '../models/Channel';
-import hdfsService from '../services/hdfsService';
 
 const router = Router();
 
-// YouTube API configuration
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
-// Get trending videos
+// Get trending videos from dataset
 router.get('/trending', async (req: Request, res: Response) => {
   try {
-    const { regionCode = 'US', maxResults = 50, categoryId } = req.query;
+    const { regionCode, maxResults = 50, categoryId } = req.query;
 
-    if (!YOUTUBE_API_KEY) {
-      return res.status(500).json({
-        success: false,
-        error: 'YouTube API key not configured'
+    // Build query from dataset
+    const query: any = {};
+    if (regionCode) {
+      query.countryCode = regionCode;
+    }
+    if (categoryId) {
+      query.categoryId = categoryId;
+    }
+
+    // Fetch trending videos from MongoDB dataset, sorted by trendingScore
+    // Use lean() for better performance and ensure trendingScore exists
+    const videos = await Video.find(query)
+      .sort({ trendingScore: -1 })
+      .limit(parseInt(maxResults as string))
+      .select('videoId title description channelTitle channelId publishedAt thumbnails statistics trendingScore engagementRate categoryId countryCode')
+      .lean()
+      .exec();
+
+    // If no videos found, return empty array instead of error
+    if (!videos || videos.length === 0) {
+      console.log(`No trending videos found for query:`, query);
+      return res.json({
+        success: true,
+        count: 0,
+        data: []
       });
     }
 
-    // Fetch from YouTube API
-    const response = await axios.get(`${YOUTUBE_API_BASE_URL}/videos`, {
-      params: {
-        part: 'snippet,statistics,contentDetails',
-        chart: 'mostPopular',
-        regionCode,
-        maxResults: parseInt(maxResults as string),
-        ...(categoryId && { videoCategoryId: categoryId }),
-        key: YOUTUBE_API_KEY
-      }
-    });
-
-    const videos = response.data.items.map((item: any) => ({
-      videoId: item.id,
-      title: item.snippet.title,
-      description: item.snippet.description,
-      channelId: item.snippet.channelId,
-      channelTitle: item.snippet.channelTitle,
-      publishedAt: item.snippet.publishedAt,
-      thumbnails: item.snippet.thumbnails,
-      statistics: {
-        viewCount: parseInt(item.statistics.viewCount || '0'),
-        likeCount: parseInt(item.statistics.likeCount || '0'),
-        commentCount: parseInt(item.statistics.commentCount || '0')
+    // Format videos to match expected structure
+    const formattedVideos = videos.map((video: any) => ({
+      videoId: video.videoId || '',
+      title: video.title || 'Untitled',
+      description: video.description || '',
+      channelId: video.channelId || '',
+      channelTitle: video.channelTitle || 'Unknown Channel',
+      publishedAt: video.publishedAt || new Date(),
+      thumbnails: video.thumbnails || {
+        medium: { url: `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg` },
+        high: { url: `https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg` }
       },
-      categoryId: item.snippet.categoryId,
-      duration: item.contentDetails.duration,
-      trendingScore: calculateTrendingScore(item.statistics),
-      engagementRate: calculateEngagementRate(item.statistics)
+      statistics: video.statistics || {
+        viewCount: 0,
+        likeCount: 0,
+        commentCount: 0
+      },
+      categoryId: video.categoryId || '',
+      trendingScore: video.trendingScore || 0,
+      engagementRate: video.engagementRate || 0
     }));
 
-    // Save to database
-    for (const video of videos) {
-      await Video.findOneAndUpdate(
-        { videoId: video.videoId },
-        video,
-        { upsert: true, new: true }
-      );
-    }
-
-    // Store in HDFS if enabled
-    let hdfsPath = '';
-    try {
-      const isHDFSEnabled = await hdfsService.isEnabled();
-      if (isHDFSEnabled) {
-        const date = new Date().toISOString().split('T')[0];
-        hdfsPath = await hdfsService.storeVideoData(videos, date);
-        if (hdfsPath) {
-          console.log(`✅ Data stored in HDFS: ${hdfsPath}`);
-        }
-      }
-    } catch (error) {
-      console.warn('⚠️ HDFS storage failed, continuing without HDFS:', error);
-    }
+    console.log(`✅ Returning ${formattedVideos.length} trending videos`);
 
     return res.json({
       success: true,
-      count: videos.length,
-      data: videos,
-      hdfsPath: hdfsPath || undefined
+      count: formattedVideos.length,
+      data: formattedVideos
     });
 
   } catch (error) {
-    console.error('Error fetching trending videos:', error);
+    console.error('❌ Error fetching trending videos:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch trending videos';
+    console.error('Error details:', error);
     return res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch trending videos'
+      error: errorMessage,
+      message: 'Failed to fetch trending videos from database'
     });
   }
 });
 
-// Search videos
+// Search videos in dataset
 router.get('/search', async (req: Request, res: Response) => {
   try {
     const { q, maxResults = 25, order = 'relevance' } = req.query;
@@ -105,39 +92,68 @@ router.get('/search', async (req: Request, res: Response) => {
       });
     }
 
-    if (!YOUTUBE_API_KEY) {
-      return res.status(500).json({
-        success: false,
-        error: 'YouTube API key not configured'
-      });
+    // Build search query for MongoDB
+    const searchQuery: any = {
+      $or: [
+        { title: { $regex: q as string, $options: 'i' } },
+        { description: { $regex: q as string, $options: 'i' } },
+        { channelTitle: { $regex: q as string, $options: 'i' } },
+        { tags: { $in: [new RegExp(q as string, 'i')] } }
+      ]
+    };
+
+    // Build sort options
+    let sortOptions: any = {};
+    switch (order) {
+      case 'date':
+        sortOptions = { publishedAt: -1 };
+        break;
+      case 'rating':
+        sortOptions = { 'statistics.likeCount': -1 };
+        break;
+      case 'viewCount':
+        sortOptions = { 'statistics.viewCount': -1 };
+        break;
+      case 'relevance':
+      default:
+        // Sort by trending score for relevance
+        sortOptions = { trendingScore: -1 };
+        break;
     }
 
-    const response = await axios.get(`${YOUTUBE_API_BASE_URL}/search`, {
-      params: {
-        part: 'snippet',
-        q: q as string,
-        type: 'video',
-        maxResults: parseInt(maxResults as string),
-        order: order as string,
-        key: YOUTUBE_API_KEY
-      }
-    });
+    // Search in MongoDB dataset
+    const videos = await Video.find(searchQuery)
+      .sort(sortOptions)
+      .limit(parseInt(maxResults as string))
+      .select('videoId title description channelTitle channelId publishedAt thumbnails categoryId statistics trendingScore engagementRate')
+      .lean();
 
-    const videos = response.data.items.map((item: any) => ({
-      videoId: item.id.videoId,
-      title: item.snippet.title,
-      description: item.snippet.description,
-      channelId: item.snippet.channelId,
-      channelTitle: item.snippet.channelTitle,
-      publishedAt: item.snippet.publishedAt,
-      thumbnails: item.snippet.thumbnails,
-      categoryId: item.snippet.categoryId
+    // Format videos
+    const formattedVideos = videos.map((video: any) => ({
+      videoId: video.videoId,
+      title: video.title,
+      description: video.description || '',
+      channelId: video.channelId,
+      channelTitle: video.channelTitle,
+      publishedAt: video.publishedAt,
+      thumbnails: video.thumbnails || {
+        medium: { url: `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg` },
+        high: { url: `https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg` }
+      },
+      categoryId: video.categoryId,
+      statistics: video.statistics || {
+        viewCount: 0,
+        likeCount: 0,
+        commentCount: 0
+      },
+      trendingScore: video.trendingScore || 0,
+      engagementRate: video.engagementRate || 0
     }));
 
     return res.json({
       success: true,
-      count: videos.length,
-      data: videos
+      count: formattedVideos.length,
+      data: formattedVideos
     });
 
   } catch (error) {
@@ -154,43 +170,8 @@ router.get('/video/:videoId', async (req: Request, res: Response) => {
   try {
     const { videoId } = req.params;
 
-    // First try to get from database
-    let video = await Video.findOne({ videoId });
-
-    if (!video && YOUTUBE_API_KEY) {
-      // Fetch from YouTube API if not in database
-      const response = await axios.get(`${YOUTUBE_API_BASE_URL}/videos`, {
-        params: {
-          part: 'snippet,statistics,contentDetails',
-          id: videoId,
-          key: YOUTUBE_API_KEY
-        }
-      });
-
-      if (response.data.items.length > 0) {
-        const item = response.data.items[0];
-        video = new Video({
-          videoId: item.id,
-          title: item.snippet.title,
-          description: item.snippet.description,
-          channelId: item.snippet.channelId,
-          channelTitle: item.snippet.channelTitle,
-          publishedAt: item.snippet.publishedAt,
-          thumbnails: item.snippet.thumbnails,
-          statistics: {
-            viewCount: parseInt(item.statistics.viewCount || '0'),
-            likeCount: parseInt(item.statistics.likeCount || '0'),
-            commentCount: parseInt(item.statistics.commentCount || '0')
-          },
-          categoryId: item.snippet.categoryId,
-          duration: item.contentDetails.duration,
-          trendingScore: calculateTrendingScore(item.statistics),
-          engagementRate: calculateEngagementRate(item.statistics)
-        });
-
-        await video.save();
-      }
-    }
+    // Get video from database
+    const video = await Video.findOne({ videoId });
 
     if (!video) {
       return res.status(404).json({

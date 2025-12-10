@@ -15,10 +15,11 @@ import {
   Visibility,
   ThumbUp,
   Comment,
-  Subscriptions,
 } from '@mui/icons-material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import api from '../services/api';
+import { getCategoryName } from '../utils/categoryMapper';
+import frontendCache from '../utils/cache';
 
 interface DashboardData {
   overview: {
@@ -27,7 +28,6 @@ interface DashboardData {
     timeRange: string;
   };
   topVideos: any[];
-  topChannels: any[];
   categoryStats: any[];
   engagementStats: {
     avgEngagement: number;
@@ -50,13 +50,25 @@ const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      
       const response = await api.get('/analytics/dashboard?timeRange=7d');
       if (response.data && response.data.data) {
         setData(response.data.data);
+        if (response.data.cached || (response as any).fromCache) {
+          console.log('✅ Using cached response');
+        }
       } else {
         setError('No data received from backend. Make sure backend is running and dataset is imported.');
       }
     } catch (err: any) {
+      // Handle cached responses
+      if (err && err.__cached) {
+        if (err.data && err.data.data) {
+          setData(err.data.data);
+          console.log('✅ Using cached data');
+          return;
+        }
+      }
       const errorMsg = err.response?.data?.error || err.message || 'Failed to fetch dashboard data';
       setError(`Failed to fetch dashboard data: ${errorMsg}. Make sure backend is running on http://localhost:5000`);
       console.error('Dashboard error:', err);
@@ -97,7 +109,7 @@ const Dashboard: React.FC = () => {
   }
 
   const chartData = data.categoryStats.map((category, index) => ({
-    category: `Category ${category._id}`,
+    category: category.name || getCategoryName(category.id || category._id),
     videos: category.count,
   }));
 
@@ -109,14 +121,16 @@ const Dashboard: React.FC = () => {
 
       {/* Overview Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
+        <Grid item xs={12} sm={6} md={4}>
+          <Card sx={{ height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Visibility color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Total Views</Typography>
+                <Visibility color="primary" sx={{ mr: 1, fontSize: 28 }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Total Views
+                </Typography>
               </Box>
-              <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+              <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
                 {data.overview.totalViews.toLocaleString()}
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -126,14 +140,16 @@ const Dashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
+        <Grid item xs={12} sm={6} md={4}>
+          <Card sx={{ height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <TrendingUp color="secondary" sx={{ mr: 1 }} />
-                <Typography variant="h6">Total Videos</Typography>
+                <TrendingUp color="secondary" sx={{ mr: 1, fontSize: 28 }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Total Videos
+                </Typography>
               </Box>
-              <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+              <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
                 {data.overview.totalVideos.toLocaleString()}
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -143,35 +159,20 @@ const Dashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
+        <Grid item xs={12} sm={6} md={4}>
+          <Card sx={{ height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <ThumbUp color="success" sx={{ mr: 1 }} />
-                <Typography variant="h6">Avg Engagement</Typography>
+                <ThumbUp color="success" sx={{ mr: 1, fontSize: 28 }} />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Avg Engagement
+                </Typography>
               </Box>
-              <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+              <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
                 {data.engagementStats.avgEngagement.toFixed(2)}%
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Like + Comment rate
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Subscriptions color="info" sx={{ mr: 1 }} />
-                <Typography variant="h6">Top Channels</Typography>
-              </Box>
-              <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                {data.topChannels.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Trending channels
               </Typography>
             </CardContent>
           </Card>
@@ -181,15 +182,21 @@ const Dashboard: React.FC = () => {
       {/* Charts */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} md={8}>
-          <Card>
+          <Card sx={{ height: '100%' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                 Category Distribution
               </Typography>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="category" />
+                  <XAxis 
+                    dataKey="category" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={100}
+                    interval={0}
+                  />
                   <YAxis />
                   <Tooltip />
                   <Bar dataKey="videos" fill="#ff0000" />
@@ -200,21 +207,31 @@ const Dashboard: React.FC = () => {
         </Grid>
 
         <Grid item xs={12} md={4}>
-          <Card>
+          <Card sx={{ height: '100%' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                 Trending Keywords
               </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {data.trendingKeywords.slice(0, 10).map((keyword, index) => (
-                  <Chip
-                    key={index}
-                    label={keyword.keyword}
-                    color="primary"
-                    size="small"
-                    sx={{ mb: 1 }}
-                  />
-                ))}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+                {data.trendingKeywords
+                  .filter((keyword: any) => {
+                    const kw = keyword.keyword || '';
+                    return kw && 
+                           kw.trim() !== '' && 
+                           !kw.match(/^\[none\]$/i) && 
+                           kw.toLowerCase() !== 'none' &&
+                           kw.toLowerCase() !== 'null' &&
+                           kw.toLowerCase() !== 'undefined';
+                  })
+                  .slice(0, 20)
+                  .map((keyword, index) => (
+                    <Chip
+                      key={index}
+                      label={keyword.keyword}
+                      color="primary"
+                      size="small"
+                    />
+                  ))}
               </Box>
             </CardContent>
           </Card>
@@ -223,57 +240,41 @@ const Dashboard: React.FC = () => {
 
       {/* Top Videos */}
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                 Top Trending Videos
               </Typography>
-              <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
-                {data.topVideos.slice(0, 5).map((video, index) => (
-                  <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #eee', borderRadius: 1 }}>
-                    <Typography variant="subtitle2" noWrap>
+              <Box sx={{ maxHeight: 500, overflow: 'auto' }}>
+                {data.topVideos.slice(0, 10).map((video, index) => (
+                  <Box 
+                    key={index} 
+                    sx={{ 
+                      mb: 2, 
+                      p: 2, 
+                      border: '1px solid #e0e0e0', 
+                      borderRadius: 2,
+                      '&:last-child': { mb: 0 }
+                    }}
+                  >
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
                       {video.title}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                       {video.channelTitle}
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-                      <Typography variant="caption">
-                        👀 {video.statistics.viewCount.toLocaleString()}
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                      <Typography variant="caption" color="text.secondary">
+                        👀 {video.statistics?.viewCount?.toLocaleString() || 0}
                       </Typography>
-                      <Typography variant="caption">
-                        👍 {video.statistics.likeCount.toLocaleString()}
+                      <Typography variant="caption" color="text.secondary">
+                        👍 {video.statistics?.likeCount?.toLocaleString() || 0}
                       </Typography>
-                      <Typography variant="caption">
-                        💬 {video.statistics.commentCount.toLocaleString()}
+                      <Typography variant="caption" color="text.secondary">
+                        💬 {video.statistics?.commentCount?.toLocaleString() || 0}
                       </Typography>
                     </Box>
-                  </Box>
-                ))}
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Top Channels
-              </Typography>
-              <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
-                {data.topChannels.slice(0, 5).map((channel, index) => (
-                  <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid #eee', borderRadius: 1 }}>
-                    <Typography variant="subtitle2">
-                      {channel.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Trending Videos: {channel.trendingVideosCount}
-                    </Typography>
-                    <Typography variant="caption" display="block">
-                      Subscribers: {channel.statistics.subscriberCount.toLocaleString()}
-                    </Typography>
                   </Box>
                 ))}
               </Box>

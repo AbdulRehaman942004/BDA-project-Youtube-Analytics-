@@ -1,29 +1,103 @@
 import axios from 'axios';
+import frontendCache from '../utils/cache';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-const IS_DEMO_MODE = String(process.env.REACT_APP_DEMO).toLowerCase() === 'true';
 
-// Create a real Axios instance (used when not in demo)
-const realApi = axios.create({
+// Create Axios instance for API calls
+const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60000, // Increased to 60 seconds for large dataset queries
+  timeout: 120000, // 120 seconds (2 minutes) for large dataset queries
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Attach interceptors to real API only
-realApi.interceptors.request.use(
+// Helper function to generate cache key
+const getCacheKey = (method: string, url: string, params?: any): string => {
+  const paramStr = params ? JSON.stringify(params) : '';
+  const urlParams = url.includes('?') ? url.split('?')[1] : '';
+  return `${method}_${url.split('?')[0]}_${paramStr}_${urlParams}`;
+};
+
+// Attach interceptors
+api.interceptors.request.use(
   (config) => {
+    // Check cache for GET requests
+    if (config.method === 'get' && config.url) {
+      try {
+        const cacheKey = getCacheKey(config.method || 'get', config.url, config.params);
+        const cached = frontendCache.get(cacheKey);
+        
+        if (cached) {
+          console.log(`✅ Cache hit for ${config.url}`);
+          // Return cached response as a promise
+          return Promise.reject({
+            __cached: true,
+            data: cached,
+            config
+          });
+        }
+      } catch (error) {
+        console.error('Cache check error:', error);
+        // Continue with normal request if cache check fails
+      }
+    }
+    
     console.log(`Making ${config.method?.toUpperCase()} request to ${config.url}`);
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    // Handle cached responses
+    if (error && error.__cached) {
+      return Promise.resolve({
+        data: error.data,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: error.config,
+        fromCache: true
+      });
+    }
+    return Promise.reject(error);
+  }
 );
 
-realApi.interceptors.response.use(
-  (response) => response,
+api.interceptors.response.use(
+  (response) => {
+    // Cache successful GET responses
+    if (response.config.method === 'get' && response.config.url && !(response as any).fromCache) {
+      try {
+        const cacheKey = getCacheKey(response.config.method || 'get', response.config.url, response.config.params);
+        
+        // Determine TTL based on endpoint
+        let ttl = 5 * 60 * 1000; // Default 5 minutes
+        if (response.config.url.includes('/analytics/dashboard')) {
+          // Dashboard data - cache based on timeRange
+          // Extract timeRange from URL or params
+          const urlParams = new URLSearchParams(response.config.url.split('?')[1] || '');
+          const params = response.config.params || {};
+          const timeRange = params.timeRange || urlParams.get('timeRange') || '7d';
+          ttl = timeRange === '1d' ? 2 * 60 * 1000 : // 2 minutes
+                timeRange === '7d' ? 5 * 60 * 1000 : // 5 minutes
+                timeRange === '30d' ? 10 * 60 * 1000 : // 10 minutes
+                15 * 60 * 1000; // 15 minutes
+        }
+        
+        frontendCache.set(cacheKey, response.data, ttl);
+        console.log(`✅ Cached ${response.config.url} for ${ttl / 1000 / 60} minutes`);
+      } catch (error) {
+        console.error('Cache set error:', error);
+        // Continue even if caching fails
+      }
+    }
+    
+    return response;
+  },
   (error) => {
+    // Don't log errors for cached responses
+    if (error && error.__cached) {
+      return Promise.reject(error);
+    }
     console.error('API Error:', error.response?.data || error.message);
     if (error.response?.status === 401) {
       console.error('Unauthorized access');
@@ -31,139 +105,5 @@ realApi.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-// --- Demo mode mock implementation ---
-type AxiosLikeResponse<T> = { data: T };
-
-function delay<T>(value: T, ms = 400): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), ms));
-}
-
-function generateMockDashboard(daysLabel: string) {
-  const categoryStats = Array.from({ length: 8 }).map((_, i) => ({ _id: i + 1, count: 10 + Math.floor(Math.random() * 90) }));
-  const topVideos = Array.from({ length: 10 }).map((_, i) => ({
-    title: `Demo Video Title ${i + 1}`,
-    channelTitle: `Demo Channel ${i + 1}`,
-    statistics: {
-      viewCount: 10000 + Math.floor(Math.random() * 1000000),
-      likeCount: 100 + Math.floor(Math.random() * 50000),
-      commentCount: 10 + Math.floor(Math.random() * 5000),
-    },
-  }));
-  const topChannels = Array.from({ length: 10 }).map((_, i) => ({
-    title: `Top Channel ${i + 1}`,
-    trendingVideosCount: 1 + Math.floor(Math.random() * 20),
-    statistics: { subscriberCount: 100000 + Math.floor(Math.random() * 9000000) },
-  }));
-  const trendingKeywords = Array.from({ length: 20 }).map((_, i) => ({ keyword: `keyword_${i + 1}`, trendScore: 50 + Math.random() * 50, category: `C${(i % 5) + 1}` }));
-
-  return {
-    overview: {
-      totalVideos: 5000 + Math.floor(Math.random() * 5000),
-      totalViews: 5_000_000 + Math.floor(Math.random() * 10_000_000),
-      timeRange: daysLabel,
-    },
-    topVideos,
-    topChannels,
-    categoryStats,
-    engagementStats: {
-      avgEngagement: 5 + Math.random() * 10,
-      maxEngagement: 20 + Math.random() * 30,
-      minEngagement: 1 + Math.random() * 3,
-    },
-    trendingKeywords,
-  };
-}
-
-function generateMockTrending(count: number) {
-  const now = Date.now();
-  return Array.from({ length: count }).map((_, i) => ({
-    videoId: `demo_video_${i + 1}`,
-    title: `Trending Demo Video ${i + 1}`,
-    description: 'This is a demo description for a trending video.',
-    channelTitle: `Demo Channel ${((i % 8) + 1)}`,
-    publishedAt: new Date(now - i * 86400000).toISOString(),
-    thumbnails: {
-      medium: `https://picsum.photos/seed/trending-${i}/400/225`,
-      high: `https://picsum.photos/seed/trending-${i}/800/450`,
-    },
-    statistics: {
-      viewCount: 10000 + Math.floor(Math.random() * 1_000_000),
-      likeCount: 100 + Math.floor(Math.random() * 50_000),
-      commentCount: 10 + Math.floor(Math.random() * 5_000),
-    },
-    trendingScore: 1000 + Math.random() * 5000,
-    engagementRate: 1 + Math.random() * 10,
-  }));
-}
-
-function generateMockSearch(count: number) {
-  const now = Date.now();
-  return Array.from({ length: count }).map((_, i) => ({
-    videoId: `search_demo_${i + 1}`,
-    title: `Search Result Demo Video ${i + 1}`,
-    description: 'Demo search result description with placeholder text.',
-    channelTitle: `Search Channel ${((i % 6) + 1)}`,
-    publishedAt: new Date(now - i * 43200000).toISOString(),
-    thumbnails: {
-      medium: `https://picsum.photos/seed/search-${i}/400/225`,
-      high: `https://picsum.photos/seed/search-${i}/800/450`,
-    },
-    categoryId: String((i % 10) + 1),
-  }));
-}
-
-// Minimal mock that mirrors the subset of axios we use (get only)
-const mockApi = {
-  get: (url: string, options?: { params?: Record<string, any> }): Promise<AxiosLikeResponse<{ data: any }>> => {
-    const path = url.split('?')[0];
-    // Simulate small network delay
-    if (path === '/analytics/dashboard') {
-      const timeRange = options?.params?.timeRange || '7d';
-      const data = generateMockDashboard(timeRange);
-      return delay({ data: { data } });
-    }
-    if (path === '/youtube/trending') {
-      const maxResults = Number(options?.params?.maxResults ?? 25);
-      const data = generateMockTrending(Math.min(Math.max(maxResults, 1), 50));
-      return delay({ data: { data } });
-    }
-    if (path === '/youtube/search') {
-      const maxResults = Number(options?.params?.maxResults ?? 25);
-      const data = generateMockSearch(Math.min(Math.max(maxResults, 1), 50));
-      return delay({ data: { data } });
-    }
-    // Try to use real API for dataset endpoints (always use real API for these)
-    if (path.startsWith('/dataset/') || path.startsWith('/hdfs/')) {
-      // Use axios directly for dataset endpoints - these should always use real API
-      return axios.get(`${API_BASE_URL}${url}`, { 
-        params: options?.params,
-        timeout: 10000
-      })
-        .then(response => ({ data: response.data }))
-        .catch((error) => {
-          console.error('API Error for', url, error);
-          // Fallback to empty if backend not available
-          return delay({ data: { data: null, success: false, error: error.message } });
-        });
-    }
-    // Default unknown route: empty payload
-    return delay({ data: { data: null } });
-  },
-};
-
-// Always use real API for dataset and HDFS endpoints, even in demo mode
-const api = IS_DEMO_MODE ? {
-  ...realApi,
-  get: (url: string, options?: any) => {
-    const path = url.split('?')[0];
-    // Always use real API for dataset and HDFS
-    if (path.startsWith('/dataset/') || path.startsWith('/hdfs/')) {
-      return realApi.get(url, options);
-    }
-    // Use mock for other endpoints in demo mode
-    return mockApi.get(url, options);
-  }
-} as typeof realApi : realApi;
 
 export default api;

@@ -33,6 +33,7 @@ import {
 } from '@mui/icons-material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import api from '../services/api';
+import { getCategoryName } from '../utils/categoryMapper';
 
 interface DatasetStats {
   totalVideos: number;
@@ -309,7 +310,7 @@ const Dataset: React.FC = () => {
                   <MenuItem value="">All Categories</MenuItem>
                   {(categories || []).map((cat) => (
                     <MenuItem key={cat._id} value={cat._id}>
-                      Category {cat._id} ({cat.count.toLocaleString()})
+                      {cat.name || getCategoryName(cat.id || cat._id)} ({cat.count.toLocaleString()})
                     </MenuItem>
                   ))}
                 </Select>
